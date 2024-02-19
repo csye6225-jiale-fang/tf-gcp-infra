@@ -4,6 +4,8 @@ provider "google" {
   region  = var.region
 }
 
+This is a syntax error
+
 resource "random_string" "name_suffix" {
   length  = 6
   special = false
