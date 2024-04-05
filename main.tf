@@ -10,6 +10,11 @@ resource "google_service_account" "custom_service_account" {
   display_name = var.service_account.display_name
 }
 
+resource "google_service_account" "cloud_function_service_account" {
+  account_id   = var.cloud_function_service_account.account_id
+  display_name = var.cloud_function_service_account.display_name
+}
+
 resource "random_string" "name_suffix" {
   length  = 6
   special = false
@@ -148,6 +153,7 @@ resource "google_project_iam_binding" "logging_admin" {
 
   members = [
     "serviceAccount:${google_service_account.custom_service_account.email}",
+    "serviceAccount:${google_service_account.cloud_function_service_account.email}",
   ]
 }
 
@@ -157,6 +163,7 @@ resource "google_project_iam_binding" "monitoring_metric_writer" {
 
   members = [
     "serviceAccount:${google_service_account.custom_service_account.email}",
+    "serviceAccount:${google_service_account.cloud_function_service_account.email}",
   ]
 }
 
@@ -166,6 +173,24 @@ resource "google_project_iam_binding" "pubsub_admin" {
 
   members = [
     "serviceAccount:${google_service_account.custom_service_account.email}",
+  ]
+}
+
+resource "google_project_iam_binding" "pubsub_subscriber" {
+  project = var.project_id
+  role    = "roles/pubsub.subscriber"
+
+  members = [
+   "serviceAccount:${google_service_account.cloud_function_service_account.email}",
+  ]
+}
+
+resource "google_project_iam_binding" "cloud_func_invoker" {
+  project = var.project_id
+  role    = "roles/cloudfunctions.invoker"
+
+  members = [
+   "serviceAccount:${google_service_account.cloud_function_service_account.email}",
   ]
 }
 
@@ -217,7 +242,8 @@ resource "google_cloudfunctions_function" "cloud_function" {
   vpc_connector                 = "projects/${var.project_id}/locations/${var.region}/connectors/vpc-connector"
   vpc_connector_egress_settings = var.cloud_function.vpc_connector_egress_settings
 
-  depends_on = [google_sql_database_instance.db_instance, google_vpc_access_connector.vpc_connector]
+  service_account_email = google_service_account.cloud_function_service_account.email
+  depends_on = [google_sql_database_instance.db_instance, google_vpc_access_connector.vpc_connector, google_service_account.cloud_function_service_account]
 }
 
 resource "google_vpc_access_connector" "vpc_connector" {
